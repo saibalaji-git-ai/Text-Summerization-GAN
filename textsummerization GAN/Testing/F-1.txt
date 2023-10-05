@@ -1,0 +1,145 @@
+Generative Adversarial Networks (GANs) (Goodfellow et al., 2014) are a framework to construct a
+generative model that can mimic the target distribution, and in recent years it has given birth to arrays
+of state-of-the-art algorithms of generative models on image domain (Radford et al., 2016; Salimans
+et al., 2016; Ledig et al., 2017; Zhang et al., 2017; Reed et al., 2016). The most distinctive feature
+of GANs is the discriminator D(x) that evaluates the divergence between the current generative
+distribution pG(x) and the target distribution q(x) (Goodfellow et al., 2014; Nowozin et al., 2016;
+Arjovsky et al., 2017). The algorithm of GANs trains the generator model by iteratively training
+the discriminator and generator in turn, with the discriminator acting as an increasingly meticulous
+critic of the current generator.
+Conditional GANs (cGANs) are a type of GANs that use conditional information (Mirza & Osindero,
+2014) for the discriminator and generator, and they have been drawing attention as a promising
+tool for class conditional image generation (Odena et al., 2017), the generation of the images from
+text (Reed et al., 2016; Zhang et al., 2017), and image to image translation (Kim et al., 2017; Zhu
+et al., 2017). Unlike in standard GANs, the discriminator of cGANs discriminates between the generator
+distribution and the target distribution on the set of the pairs of generated samples x and its
+intended conditional variable y. To the authors’ knowledge, most frameworks of discriminators in
+cGANs at the time of writing feeds the pair the conditional information y into the discriminator
+by naively concatenating (embedded) y to the input or to the feature vector at some middle layer
+(Mirza & Osindero, 2014; Denton et al., 2015; Reed et al., 2016; Zhang et al., 2017; Perarnau et al.,
+2016; Saito et al., 2017; Dumoulin et al., 2017a; Sricharan et al., 2017). We would like to however,
+take into account the structure of the assumed conditional probabilistic models underlined by the
+structure of the discriminator, which is a function that measures the information theoretic distance
+between the generative distribution and the target distribution.
+By construction, any assumption about the form of the distribution would act as a regularization on
+the choice of the discriminator. In this paper, we propose a specific form of the discriminator, a form
+motivated by a probabilistic model in which the distribution of the conditional variable y given x is
+discrete or uni-modal continuous distributions. This model assumption is in fact common in many
+real world applications, including class-conditional image generation and super-resolution.
+As we will explain in the next section, adhering to this assumption will give rise to a structure of the
+discriminator that requires us to take an inner product between the embedded condition vector y and
+the feature vector (Figure 1d). With this modification, we were able to significantly improve the
+quality of the class conditional image generation on 1000-class ILSVRC2012 dataset (Russakovsky
+et al., 2015) with a single pair of a discriminator and generator (see the generated examples in
+Figure 2). Also, when we applied our model of cGANs to a super-resolution task, we were able to
+produce high quality super-resolution images that are more discriminative in terms of the accuracy
+of the label classifier than the cGANs based on concatenation, as well as the bilinear and the bicubic
+method.As described above, (3) is a form that is true for frequently occurring situations. In contrast, incorporation
+of the conditional information by concatenation is rather arbitrary and can possibly include
+into the pool of candidate functions some sets of functions for which it is difficult to find a logical
+basis. Indeed, if the situation calls for multimodal p(yjx), it might be smart not to use the model
+that we suggest here. Otherwise, however, we expect our model to perform better; in general, it is
+preferable to use a discriminator that respects the presumed form of the probabilistic model.
+Still another way to incorporate the conditional information into the training procedure is to directly
+manipulate the loss function. The algorithm of AC-GANs (Odena et al., 2017) use a discriminator
+(D1) that shares a part of its structure with the classifier(D2), and incorporates the label information
+into the objective function by augmenting the original discriminator objective with the likelihood
+score of the classifier on both the generated and training dataset (see Figure 1c). Plug and Play
+Generative models (PPGNs) (Nguyen et al., 2017) is another approach for the generative model that
+uses an auxiliary classifier function. It is a method that endeavors to make samples from p(xjy)
+using an MCMC sampler based on the Langevin equation with drift terms consisting of the gradient
+of an autoencoder prior p(x) and a pretrained auxiliary classifier p(yjx). With these method, one
+can generate a high quality image. However, these ways of using auxiliary classifier may unwittingly
+encourage the generator to produce images that are particularly easy for the auxiliary classifier to
+classify, and deviate the final p(xjy) from the true q(xjy). In fact, Odena et al. (2017) reports
+that this problem has a tendency to exacerbate with increasing number of labels. We were able to
+reproduce this phenomena in our experiments; when we implemented their algorithm on a dataset
+with 1000 class categories, the final trained model was able to generate only one image for most
+classes. Nguyen et al.’s PPGNs is also likely to suffer from the same problem because they are using
+an order of magnitude greater coefficient for the term corresponding to p(yjx) than for the other
+terms in the Langevin equation.The ImageNet dataset used in the experiment of class conditional image generation consisted of
+1,000 image classes of approximately 1,300 pictures each. We compressed each images to 128128
+pixels. Unlike for AC-GANs3 we used a single pair of a ResNet-based generator and a discriminator.
+Also, we used conditional batch normalization (Dumoulin et al., 2017b; de Vries et al., 2017) for
+the generator. As for the architecture of the generator network used in the experiment, please see
+Figure 14 for more detail. Our proposed projection model discriminator is equipped with a ‘projection
+layer’ that takes inner product between the embedded one-hot vector y and the intermediate
+output (Figure 14a). As for the structure of the the concat model discriminator to be compared
+against, we used the identical bulk architecture as the projection model discriminator, except that we
+removed the projection layer from the structure and concatenated the spatially replicated embedded
+conditional vector y to the output of third ResBlock. We also experimented with AC-GANs as the
+current state of the art model. For AC-GANs, we placed the softmax layer classifier to the same
+structure shared by concat and projection. For each method, we updated the generator 450K times,
+and applied linear decay for the learning rate after 400K iterations so that the rate would be 0 at the
+end. For the comparative experiments, we trained the model for 450K iterations, which was ample
+for the training of concat to stabilize. AC-GANs collapsed prematurely before the completion of
+450K iterations, so we reported the result from the peak of its performance ( 80K iterations). For all
+experiments throughout, we used the training over 450K iterations for comparing the performances.
+On a separate note, our method continued to improve even after 450K. We therefore also reported
+the inception score and FID of the extended training (850K iterations) for our method exclusively.
+See the table 1 for the exact figures.
+We used inception score (Salimans et al., 2016) for the evaluation of the visual appearance of the
+generated images. It is in general difficult to evaluate how ‘good’ the generative model is. Indeed,
+however, either subjective or objective, some definite measures of ‘goodness’ exists, and essential
+two of them are ‘diversity’ and the sheer visual quality of the images. One possible candidate
+for quantitative measure of diversity and visual appearance is FID (Heusel et al., 2017). We computed
+FID between the generated images and dataset images within each class, and designated the
+values as intra FIDs. More precisely, FID (Heusel et al., 2017) measures the 2-Wasserstein distance
+between the two distributions qy and py, and is given by are respectively the mean and
+the covariance of the final feature vectors produced by the inception model (Szegedy et al., 2015)
+from the true samples and generated samples of class y. When the set of generated examples have
+collapsed modes, the trace of Cpy becomes small and the trace term itself becomes large. In order
+to compute Cqy we used all samples in the training data belonging to the class of concern, and used
+5000 generated samples for the computation of Cpy . We empirically observed in our experiments
+that intra FID is, to a certain extent, serving its purpose well in measuring the diversity and the visual
+quality.To highlight the effectiveness of our inner-product based approach (projection) of introducing the
+conditional information into the model, we compared our method against the state of the art ACGANs
+as well as the conventional incorporation of the conditional information via concatenation
+at hidden layer (concat). As we can see in the training curves Figure 3, projection outperforms
+inception score than concat throughout the training. Table 1 compares the intra class FIDs and the
+inception Score of the images generated by each method. The result shown here for the AC-GANs is
+that of the model at its prime in terms of the inception score, because the training collapsed at the end.
+We see that the images generated by projection have lower intra FID scores than both adversaries,
+indicating that the Wasserstein distance between the generative distribution by projection to the
+target distribution is smaller. For the record, our model performed better than other models on the
+CIFAR10 and CIFAR 100 as well (See Appendix A).
+Figure 10a and 10b shows the set of classes for which (a) projection yielded results with better
+intra FIDs than the concat and (b) the reverse. From the top, the figures are listed in descending
+order of the ratio between the intra FID score between the two methods. Note that when the concat
+outperforms projection it only wins by a slight margin, whereas the projection outperforms concat
+by large margin in the opposite case. A quick glance on the cases in which the concat outperforms
+the projection suggests that the FID is in fact measuring the visual quality, because both sets looks
+similar to the human eyes in terms of appearance. Figure 5 shows an arbitrarily selected set of
+results yielded by AC-GANs from variety of zs. We can clearly observe the mode-collapse on this
+batch. This is indeed a tendency reported by the inventors themselves (Odena et al., 2017). ACGANs
+can generate easily recognizable (i.e classifiable) images, but at the cost of losing diversity
+and hence at the cost of constructing a generative distribution that is significantly different from the
+target distribution as a whole. We can also assess the low FID score of projection from different
+perspective. By construction, the trace term of intra FID measures the degree of diversity within the
+class. Thus, our result on the intra FID scores also indicates that that our projection is doing better
+in reproducing the diversity of the original. The GANs with the concat discriminator also suffered
+from mode-collapse for some classes (see Figure 6). For the set of images generated by projection,
+we were not able to detect any notable mode-collapse. we did not use the most complicated neural network available for the experiments presented on this
+paper, because we prioritized the completion of the training within a reasonable time frame. It is
+very possible that, by increasing the complexity of the model, we will be able to further improve the
+visual quality of the images and the diversity of the distribution.
+Category Morphing With our new architecture, we were also able to successfully perform category
+morphism. When there are classes y1 and y2, we can create an interpolated generator by
+simply mixing the parameters of conditional batch normalization layers of the conditional generator
+corresponding to these two classes. Figure 8 shows the output of the interpolated generator with
+the same z. Interestingly, the combination is also yielding meaningful images when y1 and y2 are
+significantly different.
+Fine-tuning with the pretrained model on the ILSVRC2012 classification task. As we mentioned
+in Section 4, the authors of Plug and Play Generative model (PPGNs) (Nguyen et al., 2017)
+were able to improve the visual appearance of the model by augmenting the cost function with that
+of the label classifier. We also followed their footstep and augmented the original generator loss with
+an additional auxiliary classifier loss. As warned earlier regarding this type of approach, however,
+this type of modification tends to only improve the visual performance of the images that are easy
+for the pretrained model to classify. In fact, as we can see in Appendix B, we were able to improve
+the visual appearance the images with the augmentation, but at the cost of diversity. Any specification on the form of the discriminator imposes a regularity condition for the choice for
+the generator distribution and the target distribution. In this research, we proposed a model for the
+discriminator of cGANs that is motivated by a commonly occurring family of probabilistic models.
+This simple modification was able to significantly improve the performance of the trained generator on conditional image generation task and super-resolution task. The result presented in this paper is
+strongly suggestive of the importance of the choice of the form of the discriminator and the design
+of the distributional metric. We plan to extend this approach to other applications of cGANs, such
+as semantic segmentation tasks and image to image translation tasks.
